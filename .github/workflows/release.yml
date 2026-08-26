@@ -1,0 +1,45 @@
+name: "Release Tauri App"
+
+on:
+  push:
+    branches:
+      - main
+    # Vous pouvez aussi déclencher ceci uniquement lors de la création d'un tag (ex: git tag v1.0.0)
+    # tags:
+    #   - 'v*'
+
+jobs:
+  release:
+    strategy:
+      fail-fast: false
+      matrix:
+        # On spécifie 'windows-latest' pour compiler le fichier .exe
+        platform: [windows-latest]
+
+    runs-on: ${{ matrix.platform }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: 'npm'
+
+      - name: Install frontend dependencies
+        run: npm install
+
+      - name: Install Rust
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Build and Release Tauri app
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          # Le nom de la release GitHub
+          releaseName: 'Suivi Candidatures v__VERSION__'
+          releaseBody: 'Voici la dernière version de l''application.'
+          releaseDraft: true
+          prerelease: false
