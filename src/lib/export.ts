@@ -4,6 +4,7 @@ import autoTable from 'jspdf-autotable';
 import { save } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 import { Candidature, StatutCandidature } from '../types/candidature';
+import { getSettings } from './db';
 
 // Colonnes exportées, dans l'ordre, avec leurs libellés français.
 // id, created_at et updated_at sont volontairement exclus : usage technique uniquement.
@@ -21,6 +22,18 @@ const COLONNES: { key: keyof Candidature; label: string }[] = [
   { key: 'competences_demandees', label: 'Compétences demandées' },
   { key: 'competences_acquises', label: 'Compétences acquises' },
   { key: 'notes', label: 'Notes' },
+];
+
+// Colonnes spécifiques pour l'export PDF (8 colonnes, largeurs explicites en mm pour un total de ~269mm)
+const COLONNES_PDF: { key: keyof Candidature; label: string; width: number }[] = [
+  { key: 'poste', label: 'Poste', width: 35 },
+  { key: 'entreprise', label: 'Entreprise', width: 30 },
+  { key: 'canal', label: 'Canal', width: 26 },
+  { key: 'date_candidature', label: 'Date', width: 18 },
+  { key: 'statut', label: 'Statut', width: 28 },
+  { key: 'competences_demandees', label: 'Compétences', width: 45 },
+  { key: 'notes', label: 'Notes', width: 45 },
+  { key: 'url', label: 'URL', width: 48 },
 ];
 
 // Couleurs par statut, réutilisées pour le PDF (RGB, cohérent avec les badges de l'interface)
@@ -45,6 +58,20 @@ function versLignes(candidatures: Candidature[]) {
       const valeur = c[key];
       ligne[label] =
         key === 'date_candidature' || key === 'date_relance' || key === 'date_reponse'
+          ? formatDate(valeur as string | undefined)
+          : ((valeur as string | undefined) ?? '—');
+    }
+    return ligne;
+  });
+}
+
+function versLignesPDF(candidatures: Candidature[]) {
+  return candidatures.map(c => {
+    const ligne: Record<string, string> = {};
+    for (const { key, label } of COLONNES_PDF) {
+      const valeur = c[key];
+      ligne[label] =
+        key === 'date_candidature'
           ? formatDate(valeur as string | undefined)
           : ((valeur as string | undefined) ?? '—');
     }
@@ -131,38 +158,87 @@ export async function exportToPDF(candidatures: Candidature[]) {
     });
     if (!filePath) return;
 
+    const settings = await getSettings();
+
     const doc = new jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4' });
+    const pageWidth = doc.internal.pageSize.getWidth();
+    let curY = 15;
+
+    if (settings && (settings.nom || settings.prenom)) {
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      const nomComplet = [settings.prenom, settings.nom].filter(Boolean).join(' ');
+      doc.text(nomComplet, 14, curY);
+    }
+    
+    if (settings && settings.matricule) {
+      const boxWidth = 55;
+      const boxHeight = 12;
+      const boxX = pageWidth - 14 - boxWidth;
+      const boxY = curY - 8;
+      doc.setDrawColor(180);
+      doc.setLineWidth(0.3);
+      doc.rect(boxX, boxY, boxWidth, boxHeight);
+      doc.setFontSize(8);
+      doc.setFont('helvetica', 'normal');
+      doc.setTextColor(120);
+      doc.text('Matricule', boxX + 3, boxY + 4.5);
+      doc.setFontSize(11);
+      doc.setFont('helvetica', 'bold');
+      doc.setTextColor(0);
+      doc.text(settings.matricule, boxX + 3, boxY + 9.5);
+    }
+    
+    if (settings && (settings.nom || settings.prenom || settings.matricule)) {
+      curY += 8;
+      doc.setDrawColor(220);
+      doc.setLineWidth(0.2);
+      doc.line(14, curY, pageWidth - 14, curY);
+      curY += 6;
+    } else {
+      curY += 2;
+    }
 
     doc.setFontSize(16);
     doc.setFont('helvetica', 'bold');
-    doc.text('Suivi des candidatures', 14, 15);
+    doc.setTextColor(0);
+    doc.text('Suivi des candidatures', 14, curY);
+    curY += 6;
 
     doc.setFontSize(10);
     doc.setFont('helvetica', 'normal');
     doc.setTextColor(100);
     const dateExport = new Date().toLocaleDateString('fr-FR');
-    doc.text(`Exporté le ${dateExport} — ${candidatures.length} candidature(s)`, 14, 21);
+    doc.text(`Exporté le ${dateExport} — ${candidatures.length} candidature(s)`, 14, curY);
+    curY += 5;
 
-    const lignes = versLignes(candidatures);
-    const headers = COLONNES.map(c => c.label);
+    const lignes = versLignesPDF(candidatures);
+    const headers = COLONNES_PDF.map(c => c.label);
     const body = lignes.map(ligne => headers.map(h => ligne[h]));
+
+    // Génération dynamique de columnStyles à partir de COLONNES_PDF
+    const dynamicColumnStyles: Record<number, any> = {};
+    COLONNES_PDF.forEach((col, index) => {
+      dynamicColumnStyles[index] = { 
+        cellWidth: col.width,
+        // Appliquer 'ellipsize' spécifiquement pour l'URL pour la tronquer si trop longue
+        overflow: (col.key === 'url' || col.key === 'canal') ? 'ellipsize' : 'linebreak'
+      };
+    });
+
+    const statutIndex = COLONNES_PDF.findIndex(c => c.key === 'statut');
 
     autoTable(doc, {
       head: [headers],
       body,
-      startY: 26,
+      startY: curY + 3,
       styles: { fontSize: 8, cellPadding: 2, overflow: 'linebreak' },
       headStyles: { fillColor: [79, 70, 229], textColor: 255, fontStyle: 'bold' },
       alternateRowStyles: { fillColor: [248, 250, 252] },
-      columnStyles: {
-        0: { cellWidth: 25 }, // Poste
-        1: { cellWidth: 20 }, // Entreprise
-        2: { cellWidth: 20 }, // Réf. Job
-        9: { cellWidth: 26 }, // Statut
-      },
+      columnStyles: dynamicColumnStyles,
       didParseCell: (data) => {
         // Colore la cellule "Statut" selon sa valeur, comme les badges de l'interface
-        if (data.section === 'body' && data.column.index === 9) {
+        if (data.section === 'body' && data.column.index === statutIndex) {
           const statut = data.cell.raw as StatutCandidature;
           const couleur = COULEURS_STATUT[statut];
           if (couleur) data.cell.styles.fillColor = couleur;

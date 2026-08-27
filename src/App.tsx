@@ -5,12 +5,15 @@ import { CandidatureTable } from './components/CandidatureTable';
 import { StatsBar } from './components/StatsBar';
 import { FilterBar } from './components/FilterBar';
 import { ExportButtons } from './components/ExportButtons';
+import { SettingsModal } from './components/SettingsModal';
 import { StatutCandidature } from './types/candidature';
+import { Settings } from 'lucide-react';
 
 function App() {
   const { candidatures, loading, error, add, update, remove } = useCandidatures();
   const [filter, setFilter] = useState<StatutCandidature | 'Tous'>('Tous');
   const [searchTerm, setSearchTerm] = useState('');
+  const [settingsOpen, setSettingsOpen] = useState(false);
 
   const filteredCandidatures = candidatures.filter(c => {
     const matchesFilter = filter === 'Tous' || c.statut === filter;
@@ -28,7 +31,16 @@ function App() {
           <h1>Suivi des Candidatures</h1>
           <p className="app-subtitle">Vos candidatures, centralisées et sécurisées.</p>
         </div>
-        <ExportButtons candidatures={candidatures} />
+        <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+          <button 
+            className="btn-icon" 
+            onClick={() => setSettingsOpen(true)}
+            title="Paramètres utilisateur"
+          >
+            <Settings size={20} />
+          </button>
+          <ExportButtons candidatures={candidatures} />
+        </div>
       </header>
 
       {error && <div className="error-alert">{error}</div>}
@@ -62,6 +74,7 @@ function App() {
           )}
         </section>
       </main>
+      <SettingsModal isOpen={settingsOpen} onClose={() => setSettingsOpen(false)} />
     </div>
   );
 }

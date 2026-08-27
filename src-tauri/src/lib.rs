@@ -26,6 +26,12 @@ pub fn run() {
             description: "add_url_and_tags",
             sql: include_str!("../migrations/004_add_url_and_tags.sql"),
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 5,
+            description: "add_settings",
+            sql: include_str!("../migrations/005_add_settings.sql"),
+            kind: MigrationKind::Up,
         }
     ];
 

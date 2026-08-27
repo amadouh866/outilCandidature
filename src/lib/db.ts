@@ -1,5 +1,6 @@
 import Database from '@tauri-apps/plugin-sql';
 import { Candidature } from '../types/candidature';
+import { Settings } from '../types/settings';
 
 let db: Database | null = null;
 
@@ -61,4 +62,20 @@ export async function updateCandidature(id: number, c: Partial<Omit<Candidature,
 export async function deleteCandidature(id: number): Promise<void> {
   const db = await getDb();
   await db.execute('DELETE FROM candidatures WHERE id = $1', [id]);
+}
+
+export async function getSettings(): Promise<Settings | null> {
+  const db = await getDb();
+  const result = await db.select<Settings[]>('SELECT prenom, nom, matricule FROM settings WHERE id = 1');
+  return result.length > 0 ? result[0] : null;
+}
+
+export async function saveSettings(s: Settings): Promise<void> {
+  const db = await getDb();
+  await db.execute(
+    `UPDATE settings 
+     SET prenom = $1, nom = $2, matricule = $3, updated_at = CURRENT_TIMESTAMP 
+     WHERE id = 1`,
+    [s.prenom ?? null, s.nom ?? null, s.matricule ?? null]
+  );
 }
