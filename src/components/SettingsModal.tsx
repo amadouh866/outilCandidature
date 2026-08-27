@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { Settings } from '../types/settings';
 import { getSettings, saveSettings } from '../lib/db';
 import { X } from 'lucide-react';
 import { message } from '@tauri-apps/plugin-dialog';
