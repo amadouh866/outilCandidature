@@ -9,7 +9,10 @@
     "sql:default",
     "sql:allow-execute",
     "fs:default",
-    "fs:allow-write-file",
+    {
+      "identifier": "fs:allow-write-file",
+      "allow": [{ "path": "$APPDATA/outilCandidature/*" }, { "path": "$DOWNLOAD/*" }, { "path": "$DOCUMENT/*" }]
+    },
     "dialog:default"
   ]
 }

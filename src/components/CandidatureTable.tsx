@@ -1,5 +1,5 @@
-import { useState, useEffect } from 'react';
-import { Candidature, StatutCandidature } from '../types/candidature';
+import { useState, useEffect, useMemo } from 'react';
+import { Candidature } from '../types/candidature';
 import { StatusBadge } from './StatusBadge';
 import { Trash2, Pencil, ExternalLink } from 'lucide-react';
 import { EditCandidatureModal } from './EditCandidatureModal';
@@ -23,25 +23,21 @@ export function CandidatureTable({ candidatures, onUpdate, onDelete }: Candidatu
     setCurrentPage(1);
   }, [candidatures]);
 
+  const sortedCandidatures = useMemo(() => {
+    return [...candidatures].sort((a, b) => {
+      if (!sortConfig) return 0;
+      const { key, direction } = sortConfig;
+      const valA = a[key] ?? '';
+      const valB = b[key] ?? '';
+      if (valA < valB) return direction === 'asc' ? -1 : 1;
+      if (valA > valB) return direction === 'asc' ? 1 : -1;
+      return 0;
+    });
+  }, [candidatures, sortConfig]);
+
   if (candidatures.length === 0) {
     return <div className="empty-state">Aucune candidature pour le moment.</div>;
   }
-
-  const safeUpdate = async (id: number, data: Partial<Candidature>) => {
-    try {
-      await onUpdate(id, data);
-    } catch (err) {
-      console.error(err);
-      await message("Erreur lors de la mise à jour. Veuillez réessayer.", { title: 'Erreur', kind: 'error' });
-    }
-  };
-
-  const handleStatusChange = (id: number, statut: StatutCandidature) => safeUpdate(id, { statut });
-  const handleDateRelanceChange = (id: number, date_relance: string) => safeUpdate(id, { date_relance });
-  const handleDateReponseChange = (id: number, date_reponse: string) => safeUpdate(id, { date_reponse });
-  const handleNotesChange = (id: number, notes: string) => safeUpdate(id, { notes });
-  const handleCompetencesDemandeesChange = (id: number, competences_demandees: string) => safeUpdate(id, { competences_demandees });
-  const handleCompetencesAcquisesChange = (id: number, competences_acquises: string) => safeUpdate(id, { competences_acquises });
 
   const handleDelete = async (id: number) => {
     try {
@@ -77,22 +73,12 @@ export function CandidatureTable({ candidatures, onUpdate, onDelete }: Candidatu
     setSortConfig({ key, direction });
   };
 
-  const sortedCandidatures = [...candidatures].sort((a, b) => {
-    if (!sortConfig) return 0;
-    const { key, direction } = sortConfig;
-    const valA = a[key] ?? '';
-    const valB = b[key] ?? '';
-    if (valA < valB) return direction === 'asc' ? -1 : 1;
-    if (valA > valB) return direction === 'asc' ? 1 : -1;
-    return 0;
-  });
-
   const getSortIcon = (key: keyof Candidature) => {
     if (sortConfig?.key !== key) return null;
     return sortConfig.direction === 'asc' ? ' ↑' : ' ↓';
   };
 
-  const totalPages = Math.ceil(sortedCandidatures.length / itemsPerPage);
+  const totalPages = itemsPerPage === -1 ? 1 : Math.ceil(sortedCandidatures.length / itemsPerPage);
   const paginatedCandidatures = itemsPerPage === -1 
     ? sortedCandidatures 
     : sortedCandidatures.slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage);
@@ -146,61 +132,30 @@ export function CandidatureTable({ candidatures, onUpdate, onDelete }: Candidatu
               <td>{c.canal}</td>
               <td>{c.date_candidature}</td>
               <td>
-                <textarea 
-                  defaultValue={c.competences_demandees || ''} 
-                  onBlur={e => handleCompetencesDemandeesChange(c.id!, e.target.value)}
-                  placeholder="Compétences requises..."
-                  className="table-textarea"
-                />
+                <span className="text-truncate" title={c.competences_demandees || ''}>
+                  {c.competences_demandees || '—'}
+                </span>
               </td>
               <td>
-                <textarea 
-                  defaultValue={c.competences_acquises || ''} 
-                  onBlur={e => handleCompetencesAcquisesChange(c.id!, e.target.value)}
-                  placeholder="Vos compétences/notes..."
-                  className="table-textarea"
-                />
+                <span className="text-truncate" title={c.competences_acquises || ''}>
+                  {c.competences_acquises || '—'}
+                </span>
               </td>
               <td>
-                <input 
-                  type="date" 
-                  value={c.date_relance || ''} 
-                  onChange={e => handleDateRelanceChange(c.id!, e.target.value)}
-                  className={`table-input ${isRelanceOverdue(c) ? 'input-overdue' : ''}`}
-                  title={isRelanceOverdue(c) ? "Relance dépassée !" : ""}
-                />
+                <span className={isRelanceOverdue(c) ? 'text-red font-bold' : ''} title={isRelanceOverdue(c) ? "Relance dépassée !" : ""}>
+                  {c.date_relance || '—'}
+                </span>
               </td>
               <td>
-                <input 
-                  type="date" 
-                  value={c.date_reponse || ''} 
-                  onChange={e => handleDateReponseChange(c.id!, e.target.value)}
-                  className="table-input"
-                />
+                <span>{c.date_reponse || '—'}</span>
               </td>
               <td>
-                <select 
-                  value={c.statut}
-                  onChange={e => handleStatusChange(c.id!, e.target.value as StatutCandidature)}
-                  className="table-select"
-                >
-                  <option value="En attente">En attente</option>
-                  <option value="Entretien programmé">Entretien programmé</option>
-                  <option value="Accepté">Accepté</option>
-                  <option value="Refusé">Refusé</option>
-                  <option value="Sans réponse">Sans réponse</option>
-                </select>
-                <div style={{ marginTop: '4px' }}>
-                  <StatusBadge statut={c.statut} />
-                </div>
+                <StatusBadge statut={c.statut} />
               </td>
               <td>
-                <textarea 
-                  defaultValue={c.notes || ''} 
-                  onBlur={e => handleNotesChange(c.id!, e.target.value)}
-                  placeholder="Notes..."
-                  className="table-textarea"
-                />
+                <span className="text-truncate" title={c.notes || ''}>
+                  {c.notes || '—'}
+                </span>
               </td>
               <td className="actions-cell" style={{ display: 'flex', gap: '0.5rem' }}>
                 <button 
@@ -259,6 +214,7 @@ export function CandidatureTable({ candidatures, onUpdate, onDelete }: Candidatu
       </div>
 
       <EditCandidatureModal 
+        key={editingCandidature?.id}
         isOpen={!!editingCandidature}
         candidature={editingCandidature}
         onClose={() => setEditingCandidature(null)}

@@ -416,3 +416,12 @@ input:focus, select:focus, textarea:focus {
   padding-top: 1rem;
   border-top: 1px solid var(--border-color);
 }
+
+.text-truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 150px;
+  display: inline-block;
+  vertical-align: middle;
+}

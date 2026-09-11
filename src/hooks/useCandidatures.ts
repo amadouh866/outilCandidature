@@ -13,7 +13,7 @@ export function useCandidatures() {
       const data = await getCandidatures();
       setCandidatures(data);
       setError(null);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to fetch candidatures:', err);
       setError('Erreur lors du chargement des candidatures.');
     } finally {
@@ -29,7 +29,7 @@ export function useCandidatures() {
     try {
       await createCandidature(c);
       await fetchCandidatures(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to create candidature:', err);
       throw err;
     }
@@ -39,7 +39,7 @@ export function useCandidatures() {
     try {
       await updateCandidature(id, c);
       await fetchCandidatures(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to update candidature:', err);
       throw err;
     }
@@ -49,7 +49,7 @@ export function useCandidatures() {
     try {
       await deleteCandidature(id);
       await fetchCandidatures(false);
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error('Failed to delete candidature:', err);
       throw err;
     }

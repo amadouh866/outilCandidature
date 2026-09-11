@@ -1,7 +1,7 @@
 import * as XLSX from 'xlsx';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
-import { save } from '@tauri-apps/plugin-dialog';
+import { save, message } from '@tauri-apps/plugin-dialog';
 import { writeFile } from '@tauri-apps/plugin-fs';
 import { Candidature, StatutCandidature } from '../types/candidature';
 import { getSettings } from './db';
@@ -26,14 +26,15 @@ const COLONNES: { key: keyof Candidature; label: string }[] = [
 
 // Colonnes spécifiques pour l'export PDF (8 colonnes, largeurs explicites en mm pour un total de ~269mm)
 const COLONNES_PDF: { key: keyof Candidature; label: string; width: number }[] = [
-  { key: 'poste', label: 'Poste', width: 35 },
-  { key: 'entreprise', label: 'Entreprise', width: 30 },
-  { key: 'canal', label: 'Canal', width: 26 },
-  { key: 'date_candidature', label: 'Date', width: 18 },
-  { key: 'statut', label: 'Statut', width: 28 },
-  { key: 'competences_demandees', label: 'Compétences', width: 45 },
-  { key: 'notes', label: 'Notes', width: 45 },
-  { key: 'url', label: 'URL', width: 48 },
+  { key: 'poste', label: 'Poste', width: 32 },
+  { key: 'entreprise', label: 'Entreprise', width: 28 },
+  { key: 'reference_job', label: 'Réf.', width: 20 },
+  { key: 'canal', label: 'Canal', width: 22 },
+  { key: 'date_candidature', label: 'Date', width: 16 },
+  { key: 'statut', label: 'Statut', width: 24 },
+  { key: 'competences_demandees', label: 'Compétences', width: 40 },
+  { key: 'notes', label: 'Notes', width: 40 },
+  { key: 'url', label: 'URL', width: 45 },
 ];
 
 // Couleurs par statut, réutilisées pour le PDF (RGB, cohérent avec les badges de l'interface)
@@ -116,7 +117,7 @@ export async function exportToExcel(candidatures: Candidature[]) {
     await writeFile(filePath, new Uint8Array(excelBuffer));
   } catch (err) {
     console.error("Erreur lors de l'export Excel:", err);
-    alert("Une erreur est survenue lors de l'exportation du fichier Excel.");
+    await message("Une erreur est survenue lors de l'exportation du fichier Excel.", { title: 'Erreur', kind: 'error' });
   }
 }
 
@@ -144,7 +145,7 @@ export async function exportToCSV(candidatures: Candidature[]) {
     await writeFile(filePath, data);
   } catch (err) {
     console.error("Erreur lors de l'export CSV:", err);
-    alert("Une erreur est survenue lors de l'exportation du fichier CSV.");
+    await message("Une erreur est survenue lors de l'exportation du fichier CSV.", { title: 'Erreur', kind: 'error' });
   }
 }
 
@@ -221,8 +222,8 @@ export async function exportToPDF(candidatures: Candidature[]) {
     COLONNES_PDF.forEach((col, index) => {
       dynamicColumnStyles[index] = { 
         cellWidth: col.width,
-        // Appliquer 'ellipsize' spécifiquement pour l'URL pour la tronquer si trop longue
-        overflow: (col.key === 'url' || col.key === 'canal') ? 'ellipsize' : 'linebreak'
+        // 'linebreak' par défaut permet le retour à la ligne automatique (idéal pour l'URL complète)
+        overflow: (col.key === 'canal' || col.key === 'reference_job') ? 'ellipsize' : 'linebreak'
       };
     });
 
@@ -250,6 +251,6 @@ export async function exportToPDF(candidatures: Candidature[]) {
     await writeFile(filePath, new Uint8Array(pdfBuffer));
   } catch (err) {
     console.error("Erreur lors de l'export PDF:", err);
-    alert("Une erreur est survenue lors de l'exportation du fichier PDF.");
+    await message("Une erreur est survenue lors de l'exportation du fichier PDF.", { title: 'Erreur', kind: 'error' });
   }
 }

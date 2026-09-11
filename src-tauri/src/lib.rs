@@ -32,6 +32,12 @@ pub fn run() {
             description: "add_settings",
             sql: include_str!("../migrations/005_add_settings.sql"),
             kind: MigrationKind::Up,
+        },
+        Migration {
+            version: 6,
+            description: "add_settings_trigger_and_index",
+            sql: include_str!("../migrations/006_add_settings_trigger_and_index.sql"),
+            kind: MigrationKind::Up,
         }
     ];
 

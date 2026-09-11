@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { useCandidatures } from './hooks/useCandidatures';
 import { CandidatureForm } from './components/CandidatureForm';
 import { CandidatureTable } from './components/CandidatureTable';
@@ -15,14 +15,16 @@ function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [settingsOpen, setSettingsOpen] = useState(false);
 
-  const filteredCandidatures = candidatures.filter(c => {
-    const matchesFilter = filter === 'Tous' || c.statut === filter;
-    const searchLower = searchTerm.toLowerCase();
-    const matchesSearch = c.poste.toLowerCase().includes(searchLower) || 
-                          c.entreprise.toLowerCase().includes(searchLower) ||
-                          (c.reference_job || '').toLowerCase().includes(searchLower);
-    return matchesFilter && matchesSearch;
-  });
+  const filteredCandidatures = useMemo(() => {
+    return candidatures.filter(c => {
+      const matchesFilter = filter === 'Tous' || c.statut === filter;
+      const searchLower = searchTerm.toLowerCase();
+      const matchesSearch = c.poste.toLowerCase().includes(searchLower) || 
+                            c.entreprise.toLowerCase().includes(searchLower) ||
+                            (c.reference_job || '').toLowerCase().includes(searchLower);
+      return matchesFilter && matchesSearch;
+    });
+  }, [candidatures, filter, searchTerm]);
 
   return (
     <div className="app-container">

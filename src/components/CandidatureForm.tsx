@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import { Candidature, StatutCandidature } from '../types/candidature';
+import { message } from '@tauri-apps/plugin-dialog';
 
 interface CandidatureFormProps {
   onAdd: (c: Omit<Candidature, 'id' | 'created_at' | 'updated_at'>) => Promise<void>;
@@ -10,7 +11,14 @@ export function CandidatureForm({ onAdd }: CandidatureFormProps) {
   const [entreprise, setEntreprise] = useState('');
   const [referenceJob, setReferenceJob] = useState('');
   const [canal, setCanal] = useState('');
-  const [dateCandidature, setDateCandidature] = useState(new Date().toISOString().split('T')[0]);
+  
+  const getLocalDate = () => {
+    const d = new Date();
+    d.setMinutes(d.getMinutes() - d.getTimezoneOffset());
+    return d.toISOString().split('T')[0];
+  };
+
+  const [dateCandidature, setDateCandidature] = useState(getLocalDate());
   const [statut, setStatut] = useState<StatutCandidature>('En attente');
   const [competencesDemandees, setCompetencesDemandees] = useState('');
   const [competencesAcquises, setCompetencesAcquises] = useState('');
@@ -22,6 +30,18 @@ export function CandidatureForm({ onAdd }: CandidatureFormProps) {
     e.preventDefault();
     if (!poste || !entreprise) return;
     
+    let finalUrl = url.trim();
+    if (finalUrl) {
+      const lowerUrl = finalUrl.toLowerCase();
+      if (lowerUrl.startsWith('javascript:') || lowerUrl.startsWith('data:') || lowerUrl.startsWith('vbscript:')) {
+        await message('Format d\'URL non autorisé.', { title: 'Erreur de sécurité', kind: 'error' });
+        return;
+      }
+      if (!/^https?:\/\//i.test(finalUrl)) {
+        finalUrl = `https://${finalUrl}`;
+      }
+    }
+
     setLoading(true);
     const normalizedTags = tags
       .split(',')
@@ -40,7 +60,7 @@ export function CandidatureForm({ onAdd }: CandidatureFormProps) {
         notes: '',
         competences_demandees: competencesDemandees,
         competences_acquises: competencesAcquises,
-        url: url.trim(),
+        url: finalUrl,
         tags: normalizedTags
       });
       // Réinitialiser le formulaire
@@ -55,7 +75,6 @@ export function CandidatureForm({ onAdd }: CandidatureFormProps) {
       setTags('');
     } catch (err) {
       console.error(err);
-      const { message } = await import('@tauri-apps/plugin-dialog');
       await message('Erreur lors de l\'ajout de la candidature.', { title: 'Erreur', kind: 'error' });
     } finally {
       setLoading(false);
@@ -106,11 +125,11 @@ export function CandidatureForm({ onAdd }: CandidatureFormProps) {
         </div>
         <div className="form-group">
           <label>Lien de l'offre</label>
-          <input 
-            type="url" 
+          <textarea 
             value={url} 
             onChange={e => setUrl(e.target.value)} 
-            placeholder="Ex: https://linkedin.com/..."
+            placeholder="Ex: linkedin.com/..."
+            rows={2}
           />
         </div>
         <div className="form-group">

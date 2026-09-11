@@ -25,6 +25,7 @@ CREATE INDEX IF NOT EXISTS idx_candidatures_date ON candidatures(date_candidatur
 CREATE TRIGGER IF NOT EXISTS trg_candidatures_updated_at
 AFTER UPDATE ON candidatures
 FOR EACH ROW
+WHEN NEW.updated_at = OLD.updated_at
 BEGIN
     UPDATE candidatures SET updated_at = datetime('now') WHERE id = OLD.id;
 END;
